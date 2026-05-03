@@ -20,11 +20,23 @@
 
 #include "cursortheme.h"
 #include <QApplication>
+#include <QGuiApplication>
 #include <QSettings>
 #include <QCursor>
 #include <QDebug>
-#include <QX11Info>
+#include <QtGui/qguiapplication_platform.h>
 #include <QImage>
+
+static Display *x11Display()
+{
+    auto *x11App = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    return x11App ? x11App->display() : nullptr;
+}
+
+static bool isPlatformX11()
+{
+    return QGuiApplication::platformName() == QLatin1String("xcb");
+}
 
 #include <X11/Xlib.h>
 #include <X11/Xcursor/Xcursor.h>
@@ -92,7 +104,7 @@ QPixmap CursorTheme::pixmap() const
 
 int CursorTheme::defaultCursorSize() const
 {
-    if (!QX11Info::isPlatformX11()) {
+    if (!isPlatformX11()) {
         return 32;
     }
 
@@ -102,7 +114,7 @@ int CursorTheme::defaultCursorSize() const
        this custom value. */
     int size = 0;
     int dpi = 0;
-    Display *dpy = QX11Info::display();
+    Display *dpy = x11Display();
     // The string "v" is owned and will be destroyed by Xlib
     char *v = XGetDefault(dpy, "Xft", "dpi");
     if (v)
@@ -184,7 +196,7 @@ QPixmap CursorTheme::createIcon(int size) const
 
 qulonglong CursorTheme::loadCursor(const QString &name, int size) const
 {
-    if (!QX11Info::isPlatformX11()) {
+    if (!isPlatformX11()) {
         return None;
     }
     if (size <= 0)
@@ -200,7 +212,7 @@ qulonglong CursorTheme::loadCursor(const QString &name, int size) const
         return None;
 
     // Create the cursor
-    Cursor handle = XcursorImagesLoadCursor(QX11Info::display(), images);
+    Cursor handle = XcursorImagesLoadCursor(x11Display(), images);
     XcursorImagesDestroy(images);
 
     return handle;
@@ -266,13 +278,13 @@ bool CursorTheme::haveXfixes()
 {
     bool result = false;
 
-    if (!QX11Info::isPlatformX11()) {
+    if (!isPlatformX11()) {
         return result;
     }
     int event_base, error_base;
-    if (XFixesQueryExtension(QX11Info::display(), &event_base, &error_base)) {
+    if (XFixesQueryExtension(x11Display(), &event_base, &error_base)) {
         int major, minor;
-        XFixesQueryVersion(QX11Info::display(), &major, &minor);
+        XFixesQueryVersion(x11Display(), &major, &minor);
         result = (major >= 2);
     }
 

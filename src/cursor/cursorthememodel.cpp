@@ -26,9 +26,16 @@
 #include <QDebug>
 #include <QDir>
 
-#include <QX11Info>
+#include <QGuiApplication>
+#include <QtGui/qguiapplication_platform.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xfixes.h>
+
+static Display *x11Display()
+{
+    auto *x11App = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    return x11App ? x11App->display() : nullptr;
+}
 
 CursorThemeModel::CursorThemeModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -164,7 +171,7 @@ void CursorThemeModel::setCurrentTheme(const QString &theme)
             int cursorSize = m_settings.value("CursorSize").toInt() * m_settings.value("PixelRatio").toReal();
 
             foreach (const QString &name, names) {
-                XFixesChangeCursorByName(QX11Info::display(), theme->loadCursor(name, cursorSize), QFile::encodeName(name));
+                XFixesChangeCursorByName(x11Display(), theme->loadCursor(name, cursorSize), QFile::encodeName(name));
             }
         }
     }
